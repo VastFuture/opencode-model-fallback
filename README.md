@@ -126,6 +126,12 @@ Primary model fails (rate limit / quota / timeout / server error)
 
 ---
 
+## How It Works
+
+See [HOW_IT_WORKS.md](HOW_IT_WORKS.md) for a deep-dive into the plugin architecture, event hooks, TTFT timeout, cooldown, message replay, and subagent sync.
+
+---
+
 ## Development
 
 ```bash

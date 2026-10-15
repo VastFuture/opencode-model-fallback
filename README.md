@@ -8,24 +8,78 @@
 
 Automatic model fallback plugin for [OpenCode](https://github.com/sst/opencode). When a model API call fails (rate limit, quota, timeout, server error), the plugin **transparently switches to the next model** in a configured chain and replays the request — zero manual intervention.
 
+## OpenCode Version Support
+
+| OpenCode version | Plugin version | Status |
+|---|---|---|
+| V2 `>= 2.0.27` | `opencode-runtime-fallback >= 0.3.0` | ✅ Primary support; verified with OpenCode `2.0.29` using the package-name installation below |
+| V1 `>= 1.1.0` | Current package | ⚠️ Migration compatibility through the retained `server()` entrypoint |
+
+OpenCode V2 users must install `opencode-runtime-fallback` `0.3.0` or newer. Releases `0.2.x` use the legacy function export and fail V2 loading with `Plugin must export a default definition with an id and an effect or setup function`.
+
 ---
 
-## Quick Install
+## Recommended Installation
+
+The recommended setup lets OpenCode load the published npm package by name. OpenCode manages the package under its own cache; do not manually copy `dist/index.js` into the cache or edit cached package files.
 
 ```bash
-# One-liner
-curl -fsSL https://raw.githubusercontent.com/VastFuture/opencode-model-fallback/main/install.sh | bash
-
-# Or via npm
-npm install opencode-runtime-fallback
+npm view opencode-runtime-fallback version
 ```
 
-Then add to your `opencode.json`:
+The reported version must be `0.3.0` or newer. Pin that compatible version in the V2-native `plugins` field in `~/.config/opencode/opencode.json`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": ["opencode-runtime-fallback@0.3.0"]
+}
+```
+
+When you intentionally want automatic updates, omit the version and keep the package name only. Existing configurations using the legacy singular `plugin` field also remain accepted during V1-to-V2 migration, so this already-verified form does not need an immediate rewrite:
 
 ```json
 {
   "plugin": ["opencode-runtime-fallback"]
 }
+```
+
+Restart the background service and inspect the real loaded plugin state:
+
+```bash
+opencode service restart
+opencode api get /api/plugin
+```
+
+Installation is complete only when the API result contains:
+
+```text
+id: opencode-fallback
+source.type: package
+source.target: opencode-runtime-fallback
+source.version: 0.3.0 or newer
+state.status: active
+```
+
+The published `0.3.x` package reports `opencode-fallback`. A build from the current repository source reports `opencode-model-fallback`; both names refer to this plugin's V2 definition.
+
+If the API reports an older cached version, change the configured package target to an explicit compatible version and restart OpenCode. Do not patch OpenCode's npm cache by hand:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": ["opencode-runtime-fallback@0.3.0"]
+}
+```
+
+> Load the plugin only once. Do not combine the npm package entry with a local `dist/index.js` path or an auto-discovered copy, or OpenCode will reject the duplicate plugin ID.
+
+### Alternative installer
+
+The repository installer remains available for users who prefer the scripted setup:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/VastFuture/opencode-model-fallback/main/install.sh | bash
 ```
 
 ---

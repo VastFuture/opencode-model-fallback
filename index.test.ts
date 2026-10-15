@@ -37,8 +37,11 @@ describe("OpenCodeFallbackPlugin", () => {
 		})
 
 		describe("#when plugin is initialized", () => {
-			it("#then returns an object with name, config, event, and chat.message properties", async () => {
-				const plugin = await OpenCodeFallbackPlugin(ctx)
+			it("#then exposes a V2 definition and a V1-compatible server", async () => {
+				expect(OpenCodeFallbackPlugin.id).toBe("opencode-model-fallback")
+				expect(typeof OpenCodeFallbackPlugin.setup).toBe("function")
+				expect(typeof OpenCodeFallbackPlugin.server).toBe("function")
+				const plugin = await OpenCodeFallbackPlugin.server(ctx)
 
 				expect(plugin.name).toBe("opencode-fallback")
 				expect(typeof plugin.config).toBe("function")
@@ -49,7 +52,7 @@ describe("OpenCodeFallbackPlugin", () => {
 
 		describe("#when config hook is called with agent configs", () => {
 			it("#then captures agent configs for later use", async () => {
-				const plugin = await OpenCodeFallbackPlugin(ctx)
+				const plugin = await OpenCodeFallbackPlugin.server(ctx)
 
 				const agentConfigs = {
 					agents: {
@@ -90,7 +93,7 @@ describe("OpenCodeFallbackPlugin", () => {
 
 		describe("#when config hook is called with singular 'agent' key", () => {
 			it("#then captures agent configs from singular key", async () => {
-				const plugin = await OpenCodeFallbackPlugin(ctx)
+				const plugin = await OpenCodeFallbackPlugin.server(ctx)
 
 				const opencodeConfig = {
 					agent: {
@@ -130,7 +133,7 @@ describe("OpenCodeFallbackPlugin", () => {
 
 		describe("#when config hook is called with non-object agents", () => {
 			it("#then agentConfigs is set to undefined", async () => {
-				const plugin = await OpenCodeFallbackPlugin(ctx)
+				const plugin = await OpenCodeFallbackPlugin.server(ctx)
 
 				plugin.config({ agents: "not-an-object" } as any)
 
@@ -153,7 +156,7 @@ describe("OpenCodeFallbackPlugin", () => {
 
 		describe("#when session.error event is received", () => {
 			it("#then event handler processes the error without aborting (model already stopped)", async () => {
-				const plugin = await OpenCodeFallbackPlugin(ctx)
+				const plugin = await OpenCodeFallbackPlugin.server(ctx)
 
 				plugin.config({
 					agents: {
@@ -193,7 +196,7 @@ describe("OpenCodeFallbackPlugin", () => {
 
 		describe("#when plugin is disabled via config", () => {
 			it("#then event handler skips processing", async () => {
-				const plugin = await OpenCodeFallbackPlugin(ctx, {
+				const plugin = await OpenCodeFallbackPlugin.server(ctx, {
 					enabled: false,
 				})
 
@@ -213,7 +216,7 @@ describe("OpenCodeFallbackPlugin", () => {
 
 		describe("#when session.deleted event is received", () => {
 			it("#then cleanup is performed without errors", async () => {
-				const plugin = await OpenCodeFallbackPlugin(ctx)
+				const plugin = await OpenCodeFallbackPlugin.server(ctx)
 
 				await plugin.event({
 					event: {
@@ -230,7 +233,7 @@ describe("OpenCodeFallbackPlugin", () => {
 
 		describe("#when message.updated event is received", () => {
 			it("#then delegates to message update handler", async () => {
-				const plugin = await OpenCodeFallbackPlugin(ctx)
+				const plugin = await OpenCodeFallbackPlugin.server(ctx)
 
 				plugin.config({
 					agents: {
@@ -261,7 +264,7 @@ describe("OpenCodeFallbackPlugin", () => {
 			})
 
 			it("#then replays from non-assistant context and ignores model-less stale session.error", async () => {
-				const plugin = await OpenCodeFallbackPlugin(ctx)
+				const plugin = await OpenCodeFallbackPlugin.server(ctx)
 
 				plugin.config({
 					agents: {
@@ -339,7 +342,7 @@ describe("OpenCodeFallbackPlugin", () => {
 
 		describe("tool.execute.after", () => {
 			it("#then replaces empty task result with fallback response when child completes", async () => {
-				const plugin = await OpenCodeFallbackPlugin(ctx)
+				const plugin = await OpenCodeFallbackPlugin.server(ctx)
 				const childSessionID = "ses_child123abc"
 
 				// Mock: child session goes idle and has an assistant response
@@ -375,7 +378,7 @@ describe("OpenCodeFallbackPlugin", () => {
 			})
 
 			it("#then waits while child has active fallback then replaces result", async () => {
-				const plugin = await OpenCodeFallbackPlugin(ctx)
+				const plugin = await OpenCodeFallbackPlugin.server(ctx)
 				const childSessionID = "ses_waitchild"
 
 				// Simulate: session.get returns idle immediately (event-driven
@@ -412,7 +415,7 @@ describe("OpenCodeFallbackPlugin", () => {
 			})
 
 			it("#then preserves original empty result on max-wait timeout", async () => {
-				const plugin = await OpenCodeFallbackPlugin(ctx, { timeout_seconds: 1 })
+				const plugin = await OpenCodeFallbackPlugin.server(ctx, { timeout_seconds: 1 })
 				const childSessionID = "ses_timeoutchild"
 
 				// Child never goes idle
@@ -442,7 +445,7 @@ describe("OpenCodeFallbackPlugin", () => {
 			})
 
 			it("#then does not modify non-task tool output", async () => {
-				const plugin = await OpenCodeFallbackPlugin(ctx)
+				const plugin = await OpenCodeFallbackPlugin.server(ctx)
 
 				const input = {
 					tool: "bash",
@@ -463,7 +466,7 @@ describe("OpenCodeFallbackPlugin", () => {
 			})
 
 			it("#then does not modify non-empty task result", async () => {
-				const plugin = await OpenCodeFallbackPlugin(ctx)
+				const plugin = await OpenCodeFallbackPlugin.server(ctx)
 
 				const input = {
 					tool: "task",
@@ -486,7 +489,7 @@ describe("OpenCodeFallbackPlugin", () => {
 
 		describe("#when session.compacted event is received", () => {
 			it("#then event handler processes compacted event without errors", async () => {
-				const plugin = await OpenCodeFallbackPlugin(ctx)
+				const plugin = await OpenCodeFallbackPlugin.server(ctx)
 
 				// session.compacted should be routed to the base event handler
 				// without throwing — even with no active fallback state

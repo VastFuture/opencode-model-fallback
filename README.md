@@ -1,5 +1,7 @@
 # opencode-model-fallback
 
+> Compatible with the OpenCode V2 plugin API while retaining the V1 `server()` entrypoint during migration.
+
 [![npm](https://img.shields.io/npm/v/opencode-runtime-fallback)](https://www.npmjs.com/package/opencode-runtime-fallback)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-387%20passing-brightgreen)](#development)

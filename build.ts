@@ -5,7 +5,7 @@ await Bun.build({
 	outdir: "./dist",
 	target: "bun",
 	format: "esm",
-	external: ["@opencode-ai/plugin", "@opencode-ai/sdk"],
+	external: ["@opencode/plugin", "@opencode-ai/plugin", "@opencode-ai/sdk"],
 })
 
 const proc = Bun.spawn(["tsc", "--emitDeclarationOnly", "--project", "tsconfig.json"])

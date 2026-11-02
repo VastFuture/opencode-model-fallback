@@ -1,6 +1,6 @@
 # opencode-model-fallback
 
-> Compatible with the OpenCode V2 plugin API while retaining the V1 `server()` entrypoint during migration.
+> Native OpenCode V2 plugin with a separate `./v1` compatibility export.
 
 [![npm](https://img.shields.io/npm/v/opencode-runtime-fallback)](https://www.npmjs.com/package/opencode-runtime-fallback)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -12,10 +12,10 @@ Automatic model fallback plugin for [OpenCode](https://github.com/sst/opencode).
 
 | OpenCode version | Plugin version | Status |
 |---|---|---|
-| V2 `>= 2.0.27` | `opencode-runtime-fallback >= 0.3.0` | ✅ Primary support; verified with OpenCode `2.0.29` using the package-name installation below |
-| V1 `>= 1.1.0` | Current package | ⚠️ Migration compatibility through the retained `server()` entrypoint |
+| V2 `>= 2.2.5` | Current source / next release | Primary support; verified with OpenCode `2.2.5` using an installed package tarball |
+| V1 `>= 1.1.0` | Current source / next release | Compatibility through the separate `opencode-runtime-fallback/v1` export |
 
-OpenCode V2 users must install `opencode-runtime-fallback` `0.3.0` or newer. Releases `0.2.x` use the legacy function export and fail V2 loading with `Plugin must export a default definition with an id and an effect or setup function`.
+The default package export targets OpenCode V2 and uses the public `@opencode/plugin` API. The V1 hook implementation is intentionally isolated behind `opencode-runtime-fallback/v1`; it is not exposed from the V2 entrypoint.
 
 ---
 
@@ -27,48 +27,45 @@ The recommended setup lets OpenCode load the published npm package by name. Open
 npm view opencode-runtime-fallback version
 ```
 
-The reported version must be `0.3.0` or newer. Pin that compatible version in the V2-native `plugins` field in `~/.config/opencode/opencode.json`:
+After a compatible release is published, pin that version in the V2-native `plugins` field in `~/.config/opencode/opencode.json`:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": ["opencode-runtime-fallback@0.3.0"]
+  "plugins": ["opencode-runtime-fallback@<version>"]
 }
 ```
 
-When you intentionally want automatic updates, omit the version and keep the package name only. Existing configurations using the legacy singular `plugin` field also remain accepted during V1-to-V2 migration, so this already-verified form does not need an immediate rewrite:
+When you intentionally want automatic updates, omit the version and keep the package name only:
 
 ```json
 {
-  "plugin": ["opencode-runtime-fallback"]
+  "$schema": "https://opencode.ai/config.json",
+  "plugins": ["opencode-runtime-fallback"]
 }
 ```
 
-Restart the background service and inspect the real loaded plugin state:
+OpenCode watches configuration changes. Inspect the loaded plugin state after the location has started:
 
 ```bash
-opencode service restart
 opencode api get /api/plugin
 ```
 
 Installation is complete only when the API result contains:
 
 ```text
-id: opencode-fallback
+id: opencode-model-fallback
 source.type: package
 source.target: opencode-runtime-fallback
-source.version: 0.3.0 or newer
 state.status: active
 ```
 
-The published `0.3.x` package reports `opencode-fallback`. A build from the current repository source reports `opencode-model-fallback`; both names refer to this plugin's V2 definition.
-
-If the API reports an older cached version, change the configured package target to an explicit compatible version and restart OpenCode. Do not patch OpenCode's npm cache by hand:
+If the API reports an older cached version, change the configured package target to an explicit compatible version. Do not patch OpenCode's npm cache by hand:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": ["opencode-runtime-fallback@0.3.0"]
+  "plugins": ["opencode-runtime-fallback@<version>"]
 }
 ```
 
@@ -195,6 +192,7 @@ bun install        # install deps
 bun test           # run 387 tests
 bun run build      # compile to dist/
 bun run typecheck  # type-check without emitting
+bun run test:package # pack, install, and import the V2 entrypoint
 ```
 
 ---

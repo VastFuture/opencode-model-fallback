@@ -13,5 +13,5 @@
     "skipLibCheck": true
   },
   "include": ["*.ts"],
-  "exclude": ["*.test.ts", "dist/", "build.ts"]
+  "exclude": ["*.test.ts", "dist/", "build.ts", "package-load.ts"]
 }

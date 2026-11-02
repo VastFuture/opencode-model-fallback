@@ -192,7 +192,7 @@ bun install        # install deps
 bun test           # run 387 tests
 bun run build      # compile to dist/
 bun run typecheck  # type-check without emitting
-bun run test:package # pack, install, and import the V2 entrypoint
+bun run test:package # build, pack, install, and import both entrypoints
 ```
 
 ---

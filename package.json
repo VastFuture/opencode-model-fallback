@@ -24,7 +24,7 @@
     "build": "bun run build.ts",
     "typecheck": "tsc --noEmit",
     "test": "bun test",
-    "test:package": "bun run package-load.test.ts"
+    "test:package": "bun run build && bun run package-load.ts"
   },
   "keywords": [
     "opencode",

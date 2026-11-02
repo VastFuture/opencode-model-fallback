@@ -12,8 +12,8 @@ Automatic model fallback plugin for [OpenCode](https://github.com/sst/opencode).
 
 | OpenCode version | Plugin version | Status |
 |---|---|---|
-| V2 `>= 2.2.5` | `1.0.2` | Primary support; verified with OpenCode `2.2.5` using an installed package tarball |
-| V1 `>= 1.1.0` | `1.0.2` | Compatibility through the separate `opencode-runtime-fallback/v1` export |
+| V2 `>= 2.2.5` | `1.0.3` | Primary support; verified with OpenCode `2.2.5` using an installed package tarball |
+| V1 `>= 1.1.0` | `1.0.3` | Compatibility through the separate `opencode-runtime-fallback/v1` export |
 
 The default package export targets OpenCode V2 and uses the public `@opencode/plugin` API. The V1 hook implementation is intentionally isolated behind `opencode-runtime-fallback/v1`; it is not exposed from the V2 entrypoint.
 
@@ -25,41 +25,37 @@ This maintained build is distributed through GitHub Releases. The npm package wi
 
 ```bash
 curl -fL \
-  https://github.com/VastFuture/opencode-model-fallback/releases/download/v1.0.2/opencode-runtime-fallback-1.0.2.tgz \
-  -o /tmp/opencode-runtime-fallback-1.0.2.tgz
+  https://github.com/VastFuture/opencode-model-fallback/releases/download/v1.0.3/opencode-runtime-fallback-1.0.3.tgz \
+  -o /tmp/opencode-runtime-fallback-1.0.3.tgz
 mkdir -p ~/.config/opencode/plugins/opencode-model-fallback
-tar -xzf /tmp/opencode-runtime-fallback-1.0.2.tgz \
+tar -xzf /tmp/opencode-runtime-fallback-1.0.3.tgz \
   -C ~/.config/opencode/plugins/opencode-model-fallback \
   --strip-components=1
 npm install --omit=dev --ignore-scripts --legacy-peer-deps --prefer-offline \
   --prefix ~/.config/opencode/plugins/opencode-model-fallback
+printf 'export { default } from "file://%s/.config/opencode/plugins/opencode-model-fallback/dist/index.js"\n' \
+  "$HOME" \
+  > ~/.config/opencode/plugins/opencode-model-fallback.js
 ```
 
-Point the V2-native `plugins` field in `~/.config/opencode/opencode.json` at the installed directory:
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "plugins": ["/home/<user>/.config/opencode/plugins/opencode-model-fallback"]
-}
-```
+OpenCode `2.2.5` automatically discovers the bridge under `~/.config/opencode/plugins/`; remove any `opencode-runtime-fallback` package entry from `opencode.json` to avoid loading the upstream npm package as well.
 
 OpenCode watches configuration changes. Inspect the loaded plugin state after the location has started:
 
 ```bash
-opencode api get /api/plugin
+opencode api plugin.list --param "location[directory]=$HOME"
 ```
 
 Installation is complete only when the API result contains:
 
 ```text
 id: opencode-model-fallback
-source.type: directory
-source.target: /home/<user>/.config/opencode/plugins/opencode-model-fallback
+source.type: local
+source.path: /home/<user>/.config/opencode/plugins/opencode-model-fallback.js
 state.status: active
 ```
 
-> Load the plugin only once. Remove any `opencode-runtime-fallback` npm entry before adding the release directory, or OpenCode will reject the duplicate plugin ID.
+> Load the plugin only once. The bridge is the OpenCode entrypoint; the release directory stores the implementation and dependencies.
 
 ### Alternative installer
 

@@ -2,10 +2,11 @@
 set -e
 
 PLUGIN_NAME="opencode-runtime-fallback"
-PLUGIN_VERSION="${PLUGIN_VERSION:-1.0.2}"
+PLUGIN_VERSION="${PLUGIN_VERSION:-1.0.3}"
 GITHUB_REPO="VastFuture/opencode-model-fallback"
 CONFIG_DIR="${HOME}/.config/opencode"
 INSTALL_DIR="${CONFIG_DIR}/plugins/opencode-model-fallback"
+BRIDGE_FILE="${CONFIG_DIR}/plugins/opencode-model-fallback.js"
 ARCHIVE_URL="${ARCHIVE_URL:-https://github.com/${GITHUB_REPO}/releases/download/v${PLUGIN_VERSION}/${PLUGIN_NAME}-${PLUGIN_VERSION}.tgz}"
 
 echo "🚀 Installing ${PLUGIN_NAME}..."
@@ -36,28 +37,27 @@ tar -xzf "${archive}" -C "${INSTALL_DIR}" --strip-components=1
 npm install --omit=dev --ignore-scripts --legacy-peer-deps --prefer-offline \
     --prefix "${INSTALL_DIR}" --loglevel error
 
-# Add plugin to opencode.json if not already present
+# OpenCode 2.2.5 auto-discovers local plugin files, while package directories are not registered.
+printf 'export { default } from "file://%s/dist/index.js"\n' "${INSTALL_DIR}" > "${BRIDGE_FILE}"
+
 OPENCODE_JSON="${CONFIG_DIR}/opencode.json"
-if [ ! -f "${OPENCODE_JSON}" ]; then
-    echo "📝 Creating ${OPENCODE_JSON}..."
-    printf '{\n  "$schema": "https://opencode.ai/config.json",\n  "plugins": ["%s"]\n}\n' \
-        "${INSTALL_DIR}" > "${OPENCODE_JSON}"
-elif ! grep -q "plugins/opencode-model-fallback" "${OPENCODE_JSON}"; then
-    echo "⚠️  Replace any opencode-runtime-fallback npm entry in ${OPENCODE_JSON} with:"
-    echo "   \"plugins\": [\"${INSTALL_DIR}\"]"
+if [ -f "${OPENCODE_JSON}" ] && grep -q "opencode-runtime-fallback" "${OPENCODE_JSON}"; then
+    echo "⚠️  Remove the opencode-runtime-fallback package entry from ${OPENCODE_JSON}."
+    echo "   The local bridge ${BRIDGE_FILE} is loaded automatically."
 fi
 
 echo ""
 echo "✅ Installation complete!"
 echo ""
 echo "📁 Installed to: ${INSTALL_DIR}/"
+echo "🔗 OpenCode bridge: ${BRIDGE_FILE}"
 echo "📝 Config file:  ${OPENCODE_JSON}"
 echo ""
 echo "📋 Next steps:"
 echo ""
 echo "1. Configure fallback models in ${OPENCODE_JSON}:"
 echo ""
-printf '   {\n     "$schema": "https://opencode.ai/config.json",\n     "plugins": ["%s"],\n     "agent": {\n       "coder": {\n         "model": "anthropic/claude-sonnet-4-6",\n         "fallback_models": ["openai/gpt-5.4", "google/gemini-2.5-pro"]\n       }\n     }\n   }\n' "${INSTALL_DIR}"
+printf '   {\n     "$schema": "https://opencode.ai/config.json",\n     "agent": {\n       "coder": {\n         "model": "anthropic/claude-sonnet-4-6",\n         "fallback_models": ["openai/gpt-5.4", "google/gemini-2.5-pro"]\n       }\n     }\n   }\n'
 echo ""
 echo "2. (Optional) Create plugin config at ${CONFIG_DIR}/opencode-fallback.jsonc"
 echo ""

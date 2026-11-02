@@ -2,7 +2,7 @@
 
 > Native OpenCode V2 plugin with a separate `./v1` compatibility export.
 
-[![npm](https://img.shields.io/npm/v/opencode-runtime-fallback)](https://www.npmjs.com/package/opencode-runtime-fallback)
+[![Release](https://img.shields.io/github/v/release/VastFuture/opencode-model-fallback)](https://github.com/VastFuture/opencode-model-fallback/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-387%20passing-brightgreen)](#development)
 
@@ -12,8 +12,8 @@ Automatic model fallback plugin for [OpenCode](https://github.com/sst/opencode).
 
 | OpenCode version | Plugin version | Status |
 |---|---|---|
-| V2 `>= 2.2.5` | Current source / next release | Primary support; verified with OpenCode `2.2.5` using an installed package tarball |
-| V1 `>= 1.1.0` | Current source / next release | Compatibility through the separate `opencode-runtime-fallback/v1` export |
+| V2 `>= 2.2.5` | `1.0.2` | Primary support; verified with OpenCode `2.2.5` using an installed package tarball |
+| V1 `>= 1.1.0` | `1.0.2` | Compatibility through the separate `opencode-runtime-fallback/v1` export |
 
 The default package export targets OpenCode V2 and uses the public `@opencode/plugin` API. The V1 hook implementation is intentionally isolated behind `opencode-runtime-fallback/v1`; it is not exposed from the V2 entrypoint.
 
@@ -21,27 +21,26 @@ The default package export targets OpenCode V2 and uses the public `@opencode/pl
 
 ## Recommended Installation
 
-The recommended setup lets OpenCode load the published npm package by name. OpenCode manages the package under its own cache; do not manually copy `dist/index.js` into the cache or edit cached package files.
+This maintained build is distributed through GitHub Releases. The npm package with the same name is an upstream package and is not this VastFuture release.
 
 ```bash
-npm view opencode-runtime-fallback version
+curl -fL \
+  https://github.com/VastFuture/opencode-model-fallback/releases/download/v1.0.2/opencode-runtime-fallback-1.0.2.tgz \
+  -o /tmp/opencode-runtime-fallback-1.0.2.tgz
+mkdir -p ~/.config/opencode/plugins/opencode-model-fallback
+tar -xzf /tmp/opencode-runtime-fallback-1.0.2.tgz \
+  -C ~/.config/opencode/plugins/opencode-model-fallback \
+  --strip-components=1
+npm install --omit=dev --ignore-scripts --legacy-peer-deps --prefer-offline \
+  --prefix ~/.config/opencode/plugins/opencode-model-fallback
 ```
 
-After a compatible release is published, pin that version in the V2-native `plugins` field in `~/.config/opencode/opencode.json`:
+Point the V2-native `plugins` field in `~/.config/opencode/opencode.json` at the installed directory:
 
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
-  "plugins": ["opencode-runtime-fallback@<version>"]
-}
-```
-
-When you intentionally want automatic updates, omit the version and keep the package name only:
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "plugins": ["opencode-runtime-fallback"]
+  "plugins": ["/home/<user>/.config/opencode/plugins/opencode-model-fallback"]
 }
 ```
 
@@ -55,25 +54,16 @@ Installation is complete only when the API result contains:
 
 ```text
 id: opencode-model-fallback
-source.type: package
-source.target: opencode-runtime-fallback
+source.type: directory
+source.target: /home/<user>/.config/opencode/plugins/opencode-model-fallback
 state.status: active
 ```
 
-If the API reports an older cached version, change the configured package target to an explicit compatible version. Do not patch OpenCode's npm cache by hand:
-
-```json
-{
-  "$schema": "https://opencode.ai/config.json",
-  "plugins": ["opencode-runtime-fallback@<version>"]
-}
-```
-
-> Load the plugin only once. Do not combine the npm package entry with a local `dist/index.js` path or an auto-discovered copy, or OpenCode will reject the duplicate plugin ID.
+> Load the plugin only once. Remove any `opencode-runtime-fallback` npm entry before adding the release directory, or OpenCode will reject the duplicate plugin ID.
 
 ### Alternative installer
 
-The repository installer remains available for users who prefer the scripted setup:
+The repository installer performs the same release-based installation:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/VastFuture/opencode-model-fallback/main/install.sh | bash

@@ -4,7 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/VastFuture/opencode-model-fallback)](https://github.com/VastFuture/opencode-model-fallback/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-387%20passing-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-391%20passing-brightgreen)](#development)
 
 Automatic model fallback plugin for [OpenCode](https://github.com/sst/opencode). When a model API call fails (rate limit, quota, timeout, server error), the plugin **transparently switches to the next model** in a configured chain and replays the request — zero manual intervention.
 
@@ -16,6 +16,16 @@ Automatic model fallback plugin for [OpenCode](https://github.com/sst/opencode).
 | V1 `>= 1.1.0` | `1.0.3` | Compatibility through the separate `opencode-runtime-fallback/v1` export |
 
 The default package export targets OpenCode V2 and uses the public `@opencode/plugin` API. The V1 hook implementation is intentionally isolated behind `opencode-runtime-fallback/v1`; it is not exposed from the V2 entrypoint.
+
+### Local compatibility fix for OpenCode 2.2.7
+
+The working-tree fix resumes the existing V2 context with an empty synthetic steering input after switching models. It does not enqueue a copy of a historical user message: newer queued prompts may not yet appear in `session.context()`. Existing user messages and attachments stay in the context.
+
+OpenCode 2.2.7 discovers `~/.config/opencode/plugins/opencode-model-fallback/` directly. If that directory is listed by `opencode2 plugin list`, omit the bridge from the 2.2.5 installation instructions below; an additional bridge produces a duplicate plugin ID.
+
+V2 text, reasoning, tool activity and successful execution events now update the fallback watchdog. Agent model references are converted to `provider/model` before entering the V1 state machine, so a failed primary is not selected again by mistake.
+
+Regression coverage: `bun test v2-events.test.ts`. Local runtime verification uses OpenCode 2.2.7 with an isolated configuration and a local synthetic provider, including three consecutive prompts and prompts queued during a failing request. This is local E2 evidence, not a live-provider test or a published release.
 
 ---
 

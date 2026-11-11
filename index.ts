@@ -10,6 +10,18 @@ import { logInfo } from "./logger"
 
 function normalizeV2Event(event: { type: string; data?: unknown }) {
 	const data = event.data as Record<string, unknown> | undefined
+	switch (event.type) {
+		case "session.text.delta":
+		case "session.text.ended":
+		case "session.reasoning.delta":
+		case "session.reasoning.ended":
+		case "session.tool.called":
+		case "session.tool.progress":
+		case "session.tool.success":
+			return { type: "message.part.delta", properties: data }
+		case "session.execution.succeeded":
+			return { type: "session.idle", properties: data }
+	}
 	if (event.type === "session.execution.failed") {
 		return { type: "session.error", properties: data }
 	}
@@ -73,10 +85,6 @@ function createV2Adapter(ctx: Plugin.Context): PluginContext {
 		}),
 		abort: async ({ path }: any) => ctx.session.interrupt({ sessionID: path.id }),
 		promptAsync: async ({ path, body }: any) => {
-			const text = (body.parts ?? [])
-				.filter((part: any) => part.type === "text")
-				.map((part: any) => part.text)
-				.join("\n")
 			if (body.model) {
 				await ctx.session.switchModel({
 					sessionID: path.id,
@@ -86,7 +94,8 @@ function createV2Adapter(ctx: Plugin.Context): PluginContext {
 			if (body.agent) {
 				await ctx.session.switchAgent({ sessionID: path.id, agent: body.agent })
 			}
-			await ctx.session.prompt({ sessionID: path.id, text, delivery: "queue" })
+			// Resume existing context; queued input may be newer than its last user message.
+			await ctx.session.synthetic({ sessionID: path.id, text: "", delivery: "steer" })
 		},
 		summarize: async ({ path, body }: any) => {
 			if (body?.providerID && body?.modelID) {
@@ -114,7 +123,15 @@ async function setupV2(ctx: Plugin.Context) {
 
 	await ctx.agent.transform((editor) => {
 		const agents: Record<string, unknown> = {}
-		for (const agent of editor.list()) agents[String(agent.id)] = agent
+		for (const agent of editor.list()) {
+			agents[String(agent.id)] = {
+				...agent,
+				// OpenCode's config transform may assign the model after this callback.
+				get model() {
+					return agent.model ? `${agent.model.providerID}/${agent.model.id}` : undefined
+				},
+			}
+		}
 		void hooks.config?.({ agent: agents })
 	})
 

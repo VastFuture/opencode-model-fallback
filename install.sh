@@ -2,7 +2,7 @@
 set -e
 
 PLUGIN_NAME="opencode-runtime-fallback"
-PLUGIN_VERSION="${PLUGIN_VERSION:-1.0.3}"
+PLUGIN_VERSION="${PLUGIN_VERSION:-1.0.4}"
 GITHUB_REPO="VastFuture/opencode-model-fallback"
 CONFIG_DIR="${HOME}/.config/opencode"
 INSTALL_DIR="${CONFIG_DIR}/plugins/opencode-model-fallback"
@@ -37,20 +37,27 @@ tar -xzf "${archive}" -C "${INSTALL_DIR}" --strip-components=1
 npm install --omit=dev --ignore-scripts --legacy-peer-deps --prefer-offline \
     --prefix "${INSTALL_DIR}" --loglevel error
 
-# OpenCode 2.2.5 auto-discovers local plugin files, while package directories are not registered.
-printf 'export { default } from "file://%s/dist/index.js"\n' "${INSTALL_DIR}" > "${BRIDGE_FILE}"
+# Newer OpenCode discovers package directories; older versions need a bridge.
+if command -v opencode &> /dev/null && opencode plugin list 2>/dev/null | \
+    awk -v path="${INSTALL_DIR}" '$NF == path { found = 1 } END { exit !found }'; then
+    rm -f "${BRIDGE_FILE}"
+    ENTRYPOINT="${INSTALL_DIR}"
+else
+    printf 'export { default } from "file://%s/dist/index.js"\n' "${INSTALL_DIR}" > "${BRIDGE_FILE}"
+    ENTRYPOINT="${BRIDGE_FILE}"
+fi
 
 OPENCODE_JSON="${CONFIG_DIR}/opencode.json"
 if [ -f "${OPENCODE_JSON}" ] && grep -q "opencode-runtime-fallback" "${OPENCODE_JSON}"; then
     echo "⚠️  Remove the opencode-runtime-fallback package entry from ${OPENCODE_JSON}."
-    echo "   The local bridge ${BRIDGE_FILE} is loaded automatically."
+    echo "   The local entrypoint ${ENTRYPOINT} is loaded automatically."
 fi
 
 echo ""
 echo "✅ Installation complete!"
 echo ""
 echo "📁 Installed to: ${INSTALL_DIR}/"
-echo "🔗 OpenCode bridge: ${BRIDGE_FILE}"
+echo "🔗 OpenCode entrypoint: ${ENTRYPOINT}"
 echo "📝 Config file:  ${OPENCODE_JSON}"
 echo ""
 echo "📋 Next steps:"

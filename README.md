@@ -4,7 +4,7 @@
 
 [![Release](https://img.shields.io/github/v/release/VastFuture/opencode-model-fallback)](https://github.com/VastFuture/opencode-model-fallback/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-391%20passing-brightgreen)](#development)
+[![Tests](https://img.shields.io/badge/tests-393%20passing-brightgreen)](#development)
 
 Automatic model fallback plugin for [OpenCode](https://github.com/sst/opencode). When a model API call fails (rate limit, quota, timeout, server error), the plugin **transparently switches to the next model** in a configured chain and replays the request — zero manual intervention.
 
@@ -12,20 +12,20 @@ Automatic model fallback plugin for [OpenCode](https://github.com/sst/opencode).
 
 | OpenCode version | Plugin version | Status |
 |---|---|---|
-| V2 `>= 2.2.5` | `1.0.3` | Primary support; verified with OpenCode `2.2.5` using an installed package tarball |
-| V1 `>= 1.1.0` | `1.0.3` | Compatibility through the separate `opencode-runtime-fallback/v1` export |
+| V2 `>= 2.2.5` | `1.0.4` | Primary support; verified with OpenCode `2.2.7` using an installed release package |
+| V1 `>= 1.1.0` | `1.0.4` | Compatibility through the separate `opencode-runtime-fallback/v1` export |
 
 The default package export targets OpenCode V2 and uses the public `@opencode/plugin` API. The V1 hook implementation is intentionally isolated behind `opencode-runtime-fallback/v1`; it is not exposed from the V2 entrypoint.
 
-### Local compatibility fix for OpenCode 2.2.7
+### OpenCode 2.2.7 compatibility fix
 
-The working-tree fix resumes the existing V2 context with an empty synthetic steering input after switching models. It does not enqueue a copy of a historical user message: newer queued prompts may not yet appear in `session.context()`. Existing user messages and attachments stay in the context.
+Version 1.0.4 resumes the existing V2 context with an empty synthetic steering input after switching models. It does not enqueue a copy of a historical user message: newer queued prompts may not yet appear in `session.context()`. Existing user messages and attachments stay in the context.
 
-OpenCode 2.2.7 discovers `~/.config/opencode/plugins/opencode-model-fallback/` directly. If that directory is listed by `opencode2 plugin list`, omit the bridge from the 2.2.5 installation instructions below; an additional bridge produces a duplicate plugin ID.
+OpenCode 2.2.7 discovers `~/.config/opencode/plugins/opencode-model-fallback/` directly. The installer detects directory discovery and removes the older bridge to prevent a duplicate plugin ID.
 
 V2 text, reasoning, tool activity and successful execution events now update the fallback watchdog. Agent model references are converted to `provider/model` before entering the V1 state machine, so a failed primary is not selected again by mistake.
 
-Regression coverage: `bun test v2-events.test.ts`. Local runtime verification uses OpenCode 2.2.7 with an isolated configuration and a local synthetic provider, including three consecutive prompts and prompts queued during a failing request. This is local E2 evidence, not a live-provider test or a published release.
+Regression coverage: `bun test v2-events.test.ts`. Local runtime verification uses OpenCode 2.2.7 with an isolated configuration and a local synthetic provider, including three consecutive prompts and prompts queued during a failing request. This is local E2 evidence and does not verify live-provider behavior.
 
 ---
 
@@ -35,14 +35,25 @@ This maintained build is distributed through GitHub Releases. The npm package wi
 
 ```bash
 curl -fL \
-  https://github.com/VastFuture/opencode-model-fallback/releases/download/v1.0.3/opencode-runtime-fallback-1.0.3.tgz \
-  -o /tmp/opencode-runtime-fallback-1.0.3.tgz
+  https://github.com/VastFuture/opencode-model-fallback/releases/download/v1.0.4/opencode-runtime-fallback-1.0.4.tgz \
+  -o /tmp/opencode-runtime-fallback-1.0.4.tgz
 mkdir -p ~/.config/opencode/plugins/opencode-model-fallback
-tar -xzf /tmp/opencode-runtime-fallback-1.0.3.tgz \
+tar -xzf /tmp/opencode-runtime-fallback-1.0.4.tgz \
   -C ~/.config/opencode/plugins/opencode-model-fallback \
   --strip-components=1
 npm install --omit=dev --ignore-scripts --legacy-peer-deps --prefer-offline \
   --prefix ~/.config/opencode/plugins/opencode-model-fallback
+```
+
+OpenCode 2.2.7 loads this directory directly. When upgrading an older installation, remove its bridge if the directory appears in `opencode2 plugin list`:
+
+```bash
+rm -f ~/.config/opencode/plugins/opencode-model-fallback.js
+```
+
+For OpenCode 2.2.5, create the bridge instead:
+
+```bash
 printf 'export { default } from "file://%s/.config/opencode/plugins/opencode-model-fallback/dist/index.js"\n' \
   "$HOME" \
   > ~/.config/opencode/plugins/opencode-model-fallback.js
@@ -61,15 +72,15 @@ Installation is complete only when the API result contains:
 ```text
 id: opencode-model-fallback
 source.type: local
-source.path: /home/<user>/.config/opencode/plugins/opencode-model-fallback.js
+source.path: /home/<user>/.config/opencode/plugins/opencode-model-fallback
 state.status: active
 ```
 
-> Load the plugin only once. The bridge is the OpenCode entrypoint; the release directory stores the implementation and dependencies.
+> Load the plugin only once. OpenCode 2.2.5 reports the bridge path with a `.js` suffix instead of the directory path.
 
 ### Alternative installer
 
-The repository installer performs the same release-based installation:
+The repository installer selects the appropriate entrypoint automatically:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/VastFuture/opencode-model-fallback/main/install.sh | bash
@@ -185,7 +196,7 @@ See [HOW_IT_WORKS.md](HOW_IT_WORKS.md) for a deep-dive into the plugin architect
 
 ```bash
 bun install        # install deps
-bun test           # run 387 tests
+bun test           # run 393 tests
 bun run build      # compile to dist/
 bun run typecheck  # type-check without emitting
 bun run test:package # build, pack, install, and import both entrypoints

@@ -19,7 +19,7 @@ for (const discoversDirectory of [false, true]) {
 			const scripts = {
 				npm: "#!/bin/sh\nexit 0\n",
 				curl: '#!/bin/sh\ncp "$INSTALL_TEST_ARCHIVE" "$4"\n',
-				opencode: '#!/bin/sh\n[ "$INSTALL_TEST_DIRECTORY_DISCOVERY" = 1 ] || exit 1\nprintf "opencode-model-fallback local %s/.config/opencode/plugins/opencode-model-fallback\\n" "$HOME"\n',
+				opencode: '#!/bin/sh\n[ "$1" = --version ] || exit 1\nif [ "$INSTALL_TEST_DIRECTORY_DISCOVERY" = 1 ]; then echo "opencode v2.2.7"; else echo "opencode v2.2.5"; fi\n',
 			}
 			for (const [name, source] of Object.entries(scripts)) {
 				await writeFile(join(bin, name), source)

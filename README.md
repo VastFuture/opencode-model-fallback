@@ -21,7 +21,7 @@ The default package export targets OpenCode V2 and uses the public `@opencode/pl
 
 Version 1.0.4 resumes the existing V2 context with an empty synthetic steering input after switching models. It does not enqueue a copy of a historical user message: newer queued prompts may not yet appear in `session.context()`. Existing user messages and attachments stay in the context.
 
-OpenCode 2.2.7 discovers `~/.config/opencode/plugins/opencode-model-fallback/` directly. The installer detects directory discovery and removes the older bridge to prevent a duplicate plugin ID.
+OpenCode 2.2.7 discovers `~/.config/opencode/plugins/opencode-model-fallback/` directly. The installer checks the OpenCode version and removes the older bridge to prevent a duplicate plugin ID.
 
 V2 text, reasoning, tool activity and successful execution events now update the fallback watchdog. Agent model references are converted to `provider/model` before entering the V1 state machine, so a failed primary is not selected again by mistake.
 
@@ -45,7 +45,7 @@ npm install --omit=dev --ignore-scripts --legacy-peer-deps --prefer-offline \
   --prefix ~/.config/opencode/plugins/opencode-model-fallback
 ```
 
-OpenCode 2.2.7 loads this directory directly. When upgrading an older installation, remove its bridge if the directory appears in `opencode2 plugin list`:
+OpenCode 2.2.7 loads this directory directly. When upgrading an older installation on 2.2.7, remove its bridge:
 
 ```bash
 rm -f ~/.config/opencode/plugins/opencode-model-fallback.js

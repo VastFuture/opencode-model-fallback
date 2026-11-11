@@ -37,9 +37,11 @@ tar -xzf "${archive}" -C "${INSTALL_DIR}" --strip-components=1
 npm install --omit=dev --ignore-scripts --legacy-peer-deps --prefer-offline \
     --prefix "${INSTALL_DIR}" --loglevel error
 
-# Newer OpenCode discovers package directories; older versions need a bridge.
-if command -v opencode &> /dev/null && opencode plugin list 2>/dev/null | \
-    awk -v path="${INSTALL_DIR}" '$NF == path { found = 1 } END { exit !found }'; then
+# Version probing avoids starting a service or relying on a cached plugin inventory.
+if command -v opencode &> /dev/null && opencode --version 2>/dev/null | awk -F. '
+    { sub(/^[^0-9]*/, "", $1); major = $1 + 0; minor = $2 + 0; patch = $3 + 0
+      compatible = major > 2 || (major == 2 && (minor > 2 || (minor == 2 && patch >= 7))) }
+    END { exit !compatible }'; then
     rm -f "${BRIDGE_FILE}"
     ENTRYPOINT="${INSTALL_DIR}"
 else

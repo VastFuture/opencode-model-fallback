@@ -76,6 +76,24 @@ function toLegacyMessage(message: Record<string, any>) {
 	}
 }
 
+// Process-wide resume claims. One provider failure can reach several plugin
+// instances (re-setup / several locations); each used to enqueue its own empty
+// steering message, which providers reject with HTTP 400. A resume is keyed by
+// session + target model, so a genuine next hop in the chain is never blocked.
+const RESUME_CLAIM_TTL_MS = 5_000
+const resumeClaims = new Map<string, number>()
+
+function claimResume(sessionID: string, model: string): boolean {
+	const now = Date.now()
+	for (const [key, at] of resumeClaims) {
+		if (now - at >= RESUME_CLAIM_TTL_MS) resumeClaims.delete(key)
+	}
+	const key = `${sessionID}\u0000${model}`
+	if (resumeClaims.has(key)) return false
+	resumeClaims.set(key, now)
+	return true
+}
+
 function createV2Adapter(ctx: Plugin.Context): PluginContext {
 	const directory = ctx.location.directory
 	const session = {
@@ -85,6 +103,11 @@ function createV2Adapter(ctx: Plugin.Context): PluginContext {
 		}),
 		abort: async ({ path }: any) => ctx.session.interrupt({ sessionID: path.id }),
 		promptAsync: async ({ path, body }: any) => {
+			const target = body.model ? `${body.model.providerID}/${body.model.modelID}` : ""
+			if (!claimResume(path.id, target)) {
+				logInfo("Skipping duplicate resume for session", { sessionID: path.id, model: target })
+				return
+			}
 			if (body.model) {
 				await ctx.session.switchModel({
 					sessionID: path.id,

@@ -12,7 +12,7 @@ for (const activity of ["session.text.delta", "session.reasoning.delta", "sessio
 			fallback_models: ["test/primary", "test/backup", "test/last"],
 			timeout_seconds: 0.05,
 		}))
-		const sessionID = "ses_001"
+		const sessionID = `ses_${activity}`
 		const prompt = mock(async (_input: unknown) => {})
 		const synthetic = mock(async (_input: unknown) => {})
 		const interrupt = mock(async () => {})
@@ -70,3 +70,76 @@ for (const activity of ["session.text.delta", "session.reasoning.delta", "sessio
 		}
 	})
 }
+
+// 2026-11-12 incident: one provider retry event reached several plugin instances
+// (re-setup without teardown / several locations), and each one enqueued its own
+// empty synthetic resume message -> "message content cannot be empty" HTTP 400.
+async function runRetryThroughInstances(directories: string[]) {
+	const sessionID = `ses_dup_${crypto.randomUUID()}`
+	const synthetic = mock(async (_input: unknown) => {})
+	const interrupt = mock(async () => {})
+	const switchModel = mock(async (_input: unknown) => {})
+	const cleanups: Array<(() => void) | void> = []
+	const dones: Promise<void>[] = []
+	for (const directory of directories) {
+		let finish!: () => void
+		dones.push(new Promise<void>((resolve) => { finish = resolve }))
+		const agent: { id: string; model?: { providerID: string; id: string } } = { id: "build" }
+		const events = [{ type: "session.retry.scheduled", data: {
+			sessionID, assistantMessageID: "msg_failed", attempt: 1,
+			at: Date.now() + 60_000, error: { message: "Rate limited", statusCode: 429 },
+		} }]
+		cleanups.push(await plugin.setup({
+			location: { directory },
+			options: {},
+			agent: { transform: async (transform: any) => {
+				transform({ list: () => [agent] })
+				agent.model = { providerID: "test", id: "primary" }
+			} },
+			session: {
+				hook: async () => {},
+				get: async () => ({ agent: "build", model: { providerID: "test", id: "primary" } }),
+				context: async () => [{ id: "msg_0", type: "user", text: "hello", time: { created: 0 } }],
+				interrupt, switchModel, switchAgent: async () => {}, prompt: async () => {}, synthetic,
+			},
+			tool: { hook: async () => {} },
+			event: { subscribe: async function* () { try { yield* events } finally { finish() } } },
+		} as any) as (() => void) | void)
+	}
+	await Promise.all(dones)
+	await Bun.sleep(400)
+	cleanups.forEach((cleanup) => cleanup?.())
+	return { synthetic, switchModel }
+}
+
+async function fallbackDirectory() {
+	const directory = await mkdtemp(join(tmpdir(), "fallback-v2-dup-"))
+	await mkdir(join(directory, ".opencode"))
+	await writeFile(join(directory, ".opencode/opencode-fallback.json"), JSON.stringify({
+		fallback_models: ["test/primary", "test/backup", "test/last"],
+		timeout_seconds: 0,
+	}))
+	return directory
+}
+
+test("V2 re-setup for the same location does not leave a duplicate subscriber replaying", async () => {
+	const directory = await fallbackDirectory()
+	try {
+		const { synthetic } = await runRetryThroughInstances([directory, directory])
+		expect(synthetic).toHaveBeenCalledTimes(1)
+	} finally {
+		await rm(directory, { recursive: true, force: true })
+	}
+})
+
+test("V2 one retry seen by instances of different locations enqueues a single resume for the session", async () => {
+	const a = await fallbackDirectory()
+	const b = await fallbackDirectory()
+	try {
+		const { synthetic } = await runRetryThroughInstances([a, b])
+		expect(synthetic).toHaveBeenCalledTimes(1)
+	} finally {
+		await rm(a, { recursive: true, force: true })
+		await rm(b, { recursive: true, force: true })
+	}
+})
